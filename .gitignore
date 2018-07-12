@@ -34,3 +34,5 @@ tools/warp-ctc*
 tools/sentencepiece/*
 
 .pytest_cache
+
+.idea
