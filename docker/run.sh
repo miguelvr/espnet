@@ -109,22 +109,28 @@ if ! [[ -L ./src/utils/kaldi_io_py.py ]]; then
   cd ${my_dir}
 fi
 
-cmd1="cd /espnet/egs/${docker_egs}"
-cmd2="./run.sh $@"
-# Required to access to the folder once the training if finished
-cmd3="chmod -R 777 /espnet/egs/${docker_egs}"
-
-cmd="${cmd1}; ${cmd2}; ${cmd3}"
-if [ "${docker_gpu}" == "-1" ]; then
-  cmd="docker run -i --rm --name espnet_cpu ${vols} ${image_label} /bin/bash -c '${cmd}'"
-else
-  # --rm erase the container when the training is finished.
-  container_gpu=${docker_gpu//,/_}
-  cmd="NV_GPU='${docker_gpu}' nvidia-docker run -i --rm --name espnet_gpu${container_gpu} ${vols} ${image_label} /bin/bash -c '${cmd}'"
-fi
-
+container_gpu=${docker_gpu//,/_}
+cmd="NV_GPU='${docker_gpu}' nvidia-docker run -it --rm --name espnet_gpu${container_gpu} ${vols} ${image_label} /bin/bash"
 echo "Executing application in Docker"
 echo ${cmd}
 eval ${cmd}
 
-echo "`basename $0` done."
+#cmd1="cd /espnet/egs/${docker_egs}"
+#cmd2="./run.sh $@"
+## Required to access to the folder once the training if finished
+#cmd3="chmod -R 777 /espnet/egs/${docker_egs}"
+#
+#cmd="${cmd1}; ${cmd2}; ${cmd3}"
+#if [ "${docker_gpu}" == "-1" ]; then
+#  cmd="docker run -i --rm --name espnet_cpu ${vols} ${image_label} /bin/bash -c '${cmd}'"
+#else
+#  # --rm erase the container when the training is finished.
+#  container_gpu=${docker_gpu//,/_}
+#  cmd="NV_GPU='${docker_gpu}' nvidia-docker run -i --rm --name espnet_gpu${container_gpu} ${vols} ${image_label} /bin/bash -c '${cmd}'"
+#fi
+#
+#echo "Executing application in Docker"
+#echo ${cmd}
+#eval ${cmd}
+#
+#echo "`basename $0` done."
