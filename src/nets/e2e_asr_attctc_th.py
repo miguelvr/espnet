@@ -33,8 +33,6 @@ CTC_LOSS_THRESHOLD = 10000
 CTC_SCORING_RATIO = 1.5
 MAX_DECODER_OUTPUT = 5
 
-torch_is_old = torch.__version__.startswith("0.3.")
-
 
 def to_cuda(m, x):
     assert isinstance(m, torch.nn.Module)
@@ -143,7 +141,7 @@ class Loss(torch.nn.Module):
         return self.loss
 
 
-def pad_list(xs, pad_value=float("nan")):
+def pad_list(xs, pad_value):
     n_batch = len(xs)
     max_len = max(x.size(0) for x in xs)
     if torch_is_old:
@@ -321,7 +319,7 @@ class E2E(torch.nn.Module):
             hs = [to_cuda(self, torch.from_numpy(xx)) for xx in xs]
 
         # 1. encoder
-        xpad = pad_list(hs)
+        xpad = pad_list(hs, 0.0)
         hpad, hlens = self.enc(xpad, ilens)
 
         # # 3. CTC loss
@@ -419,7 +417,7 @@ class E2E(torch.nn.Module):
             hs = [to_cuda(self, torch.from_numpy(xx)) for xx in xs]
 
         # encoder
-        xpad = pad_list(hs)
+        xpad = pad_list(hs, 0.0)
         hpad, hlens = self.enc(xpad, ilens)
 
         # decoder
@@ -797,8 +795,8 @@ class AttLoc(torch.nn.Module):
 
         # weighted sum over flames
         # utt x hdim
-        # NOTE use bmm instead of sum(*)
-        c = torch.sum(self.enc_h * w.view(batch, self.h_length, 1), dim=1)
+        # NOTE equivalent to c = torch.sum(self.enc_h * w.view(batch, self.h_length, 1), dim=1)
+        c = torch.matmul(w.unsqueeze(1), self.enc_h).squeeze(1)
 
         return c, w
 
@@ -2103,7 +2101,9 @@ class BLSTMP(torch.nn.Module):
         for layer in six.moves.range(self.elayers):
             xpack = pack_padded_sequence(xpad, ilens, batch_first=True)
             bilstm = getattr(self, 'bilstm' + str(layer))
-            bilstm.flatten_parameters()
+            if torch_is_old:
+                # pytorch 0.4.x does not support flatten_parameters() for multiple GPUs
+                bilstm.flatten_parameters()
             ys, (hy, cy) = bilstm(xpack)
             # ys: utt list of frame x cdim x 2 (2: means bidirectional)
             ypad, ilens = pad_packed_sequence(ys, batch_first=True)
